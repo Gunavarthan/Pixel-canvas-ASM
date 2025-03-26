@@ -6,4 +6,7 @@
 
 *.com
 *.COM 
+
+*.asm
+
 /.vscode
