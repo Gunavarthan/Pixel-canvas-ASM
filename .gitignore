@@ -1,0 +1,9 @@
+*.exe
+*.EXE
+
+*.obj
+*.OBJ
+
+*.com
+*.COM 
+/.vscode
