@@ -8,6 +8,7 @@
     y dw ?
     Xprint dw 0
     line dw 0 
+    lcount dw 0
     mouseX dw ?
     mouseY dw ?
     X_10 db 0
@@ -38,6 +39,7 @@ INT 33h
 CALL FAR PTR PRINT_MATRIX
 
 MAIN_LOOP:
+
     MOV AX, 3                 ; get mouse coords and buttons state
     INT 33h
     MOV [mouseX], CX          ; X coords
@@ -50,7 +52,7 @@ MAIN_LOOP:
     TEST BL, 1                ; right click pressed
     JZ con_mouse
 
-    ;CALL FAR PTR COLOR_FILL
+    CALL FAR PTR COLOR_FILL
 
     jmp MAIN_LOOP
 con_mouse:
@@ -305,5 +307,54 @@ NO_KEY:
     RET
 
 GET_KEY_PRESS ENDP
+
+COLOR_FILL PROC FAR
+
+    ; === Calculate aligned X ===
+    mov ax, [mouseX]    ; Load mouseX
+    xor dx, dx
+    mov cl, 5           ; Divide by 5
+    div cl              ; AX / 5 → AL = quotient, AH = remainder
+    mov ah, 0
+    mov cl, 5
+    mul cl              ; Multiply quotient by 5
+    mov dx, ax          ; dx = adjusted x (multiple of 5)
+
+    mov [lcount],dx
+
+    ; === Calculate aligned Y ===
+    mov ax, [mouseY]
+    xor dx, dx
+    mov cl, 5
+    div cl              ; AL = quotient
+    mov ah, 0
+    mov cl, 5
+    mul cl              ; AX = y aligned to nearest lower multiple of 5
+    mov si, ax          ; si = current y
+    mov bx, ax
+    add bx, 5           ; bx = si + 5 (upper limit for loop)
+
+v_fill:
+    ; Calculate offset: offset = y * 320 + x
+    mov ax, si
+    mov cx, 320
+    mul cx              ; AX = si * 320
+    mov dx,[lcount]
+    add ax, dx          ; Add x
+    mov di, ax
+
+    mov cx, 5           ; fill 5 horizontal pixels
+h_fill:
+    mov al, [Color]
+    mov byte ptr es:[di], al
+    inc di
+    loop h_fill
+
+    inc si
+    cmp si, bx
+    jl v_fill           ; Loop while si < bx
+
+    ret
+COLOR_FILL ENDP
 
 end
