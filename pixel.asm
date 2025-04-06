@@ -56,7 +56,7 @@ MAIN_LOOP:
 con_mouse:
     CALL FAR PTR DRAW_MOUSE
 
-    ;CALL FAR PTR GET_KEY_PRESS
+    CALL FAR PTR GET_KEY_PRESS
 
     JMP MAIN_LOOP
 MAIN ENDP
@@ -248,4 +248,62 @@ not_first:
     MOV [old_mouseDI], DI
     RET
 DRAW_MOUSE ENDP
+
+GET_KEY_PRESS PROC
+    MOV AH, 01h      ;check key press
+    INT 16h
+    JZ NO_KEY        ; no key, return
+
+    MOV AH, 00h      ; Get  key
+    INT 16h
+
+    CMP AL, 'r'      ; r -> red
+    JNE CHECK_PLUS
+    MOV [Color], 04h
+    JMP NO_KEY
+
+CHECK_PLUS:
+    CMP AL, '+'
+    JNE CHECK_MINUS
+    inc [Color]
+    JMP NO_KEY 
+
+CHECK_MINUS:
+    CMP AL, '-'
+    JNE CHECK_G
+    dec [Color]
+    JMP NO_KEY 
+
+CHECK_G:
+    CMP AL, 'g'      ; g -> green
+    JNE CHECK_B
+    MOV [Color], 02h
+    JMP NO_KEY
+
+CHECK_B:
+    CMP AL, 'b'      ; b -> blue
+    JNE CHECK_W
+    MOV [Color], 01h
+    JMP NO_KEY
+
+CHECK_W:
+    CMP AL, 'w'      ; w -> white
+    JNE CHECK_Y
+    MOV [Color], 0Fh
+
+CHECK_Y:
+    CMP AL, 'y'      ; w -> white
+    JNE CHECK_BACKSPACE
+    MOV [Color], 0Eh
+
+CHECK_BACKSPACE:
+    CMP AL,08h
+    JNE NO_KEY
+    MOV [Color],00h
+
+NO_KEY:
+    RET
+
+GET_KEY_PRESS ENDP
+
 end
