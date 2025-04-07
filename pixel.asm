@@ -15,6 +15,8 @@
     Y_10 db 0
     Color db 07h              ; Mouse / Fill color
     buttonPressed db ?
+    filled_pixel db ?
+    i db 0
     ;Grid_arr [1024]  
 
     old_mouseDI dw -1       ; old Mouse Position
@@ -53,7 +55,7 @@ MAIN_LOOP:
     JZ con_mouse
 
     CALL FAR PTR COLOR_FILL
-
+    CALL FAR PTR DRAW_MOUSE
     jmp MAIN_LOOP
 con_mouse:
     CALL FAR PTR DRAW_MOUSE
@@ -170,6 +172,9 @@ DRAW_MOUSE PROC
     RET 
 
 not_first:
+    CMP [buttonPressed], 1
+    JE continue2
+    
     ; Restore old pixels first
     MOV SI, old_mouseDI
     MOV BL, [old_bk_color]
@@ -199,6 +204,7 @@ not_first:
     MOV BL, [old_bk_color + 8]
     MOV BYTE PTR ES:[SI-320], BL  
 
+    continue2:
     ; Update new position
     MOV AX, [mouseY]
     MOV BX, 320
@@ -295,13 +301,18 @@ CHECK_W:
 
 CHECK_Y:
     CMP AL, 'y'      ; w -> white
-    JNE CHECK_BACKSPACE
+    JNE CHECK_SPACE
     MOV [Color], 0Eh
+
+CHECK_SPACE:
+    CMP AL,' '
+    JNE CHECK_BACKSPACE
+    MOV [Color],00h
 
 CHECK_BACKSPACE:
     CMP AL,08h
     JNE NO_KEY
-    MOV [Color],00h
+    call PRINT_MATRIX
 
 NO_KEY:
     RET
@@ -330,6 +341,7 @@ COLOR_FILL PROC FAR
     mov ah, 0
     mov cl, 5
     mul cl              ; AX = y aligned to nearest lower multiple of 5
+    dec ax
     mov si, ax          ; si = current y
     mov bx, ax
     add bx, 5           ; bx = si + 5 (upper limit for loop)
