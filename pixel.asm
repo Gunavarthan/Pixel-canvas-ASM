@@ -15,12 +15,14 @@
     Y_10 db 0
     Color db 07h              ; Mouse / Fill color
     buttonPressed db ?
-    filled_pixel db ?
+    filled_pixel dw 25 dup(?)
+    pixel_offset dw ?
+    old_bk_color db 9 dup(?)
+
     i db 0
     ;Grid_arr [1024]  
 
     old_mouseDI dw -1       ; old Mouse Position
-    old_bk_color db 0Fh      ; old Mouse BG colors
     prompt db 'Enter the resolution: $'                
 .code
 
@@ -117,141 +119,175 @@ swapColor PROC FAR
 swapColor ENDP
 
 DRAW_MOUSE PROC
-    ; Calculate DI based on mouse position
+    ; Calculate DI from mouse position
     MOV AX, [mouseY]
     MOV BX, 320
-    MUL BX            
-    ADD AX, [mouseX]  
-    MOV DI, AX        
+    MUL BX
+    ADD AX, [mouseX]
+    MOV DI, AX
 
     CMP old_mouseDI, -1
     JNE not_first
 
-    ; Store background colors for all cursor pixels
+    ; First time: store background
     MOV SI, DI
-    MOV AL, BYTE PTR ES:[SI]  
-    MOV [old_bk_color], AL  
+    MOV AL, BYTE PTR ES:[SI]         ; Center
+    MOV [old_bk_color], AL
 
-    MOV AL, BYTE PTR ES:[SI+1]  
-    MOV [old_bk_color + 1], AL  
+    MOV AL, BYTE PTR ES:[SI+320]
+    MOV [old_bk_color + 1], AL
 
-    MOV AL, BYTE PTR ES:[SI-1]  
-    MOV [old_bk_color + 2], AL  
+    MOV AL, BYTE PTR ES:[SI+319]
+    MOV [old_bk_color + 2], AL
 
-    MOV AL, BYTE PTR ES:[SI+320]  
+    MOV AL, BYTE PTR ES:[SI+318]
     MOV [old_bk_color + 3], AL
 
-    MOV AL, BYTE PTR ES:[SI+319]  
+    MOV AL, BYTE PTR ES:[SI+321]
     MOV [old_bk_color + 4], AL
 
-    MOV AL, BYTE PTR ES:[SI+318]  
-    MOV [old_bk_color + 5], AL  
+    MOV AL, BYTE PTR ES:[SI+322]
+    MOV [old_bk_color + 5], AL
 
-    MOV AL, BYTE PTR ES:[SI+321]  
+    MOV AL, BYTE PTR ES:[SI-320]
     MOV [old_bk_color + 6], AL
 
-    MOV AL, BYTE PTR ES:[SI+322]  
-    MOV [old_bk_color + 7], AL
-
-    MOV AL, BYTE PTR ES:[SI-320]  
-    MOV [old_bk_color + 8], AL  
-
-    ; Draw cross cursor
-    mov AL,[Color]
-    MOV BYTE PTR ES:[DI], AL   ; Center
-    MOV BYTE PTR ES:[DI+1], AL ; Right
-    MOV BYTE PTR ES:[DI-1], AL ; Left
-    MOV BYTE PTR ES:[DI+320], AL ; Below
+    ; Draw the cursor
+    MOV AL, [Color]
+    MOV BYTE PTR ES:[DI], AL
+    MOV BYTE PTR ES:[DI+320], AL
     MOV BYTE PTR ES:[DI+319], AL
     MOV BYTE PTR ES:[DI+318], AL
     MOV BYTE PTR ES:[DI+321], AL
     MOV BYTE PTR ES:[DI+322], AL
-    MOV BYTE PTR ES:[DI-320], AL ; Above
+    MOV BYTE PTR ES:[DI-320], AL
 
     MOV [old_mouseDI], DI
-    RET 
+    RET
 
 not_first:
-    CMP [buttonPressed], 1
-    JE continue2
-    
-    ; Restore old pixels first
+    ; CMP [buttonPressed], 1
+    ; JE continue2
+
+    ; Restore old pixels only if not filled
     MOV SI, old_mouseDI
+
+    ; Center
+    MOV AX, SI
+    MOV pixel_offset, AX
+    CALL FAR PTR check_pixel_filled
+    CMP AL, 1
+    JE skip_restore_0
     MOV BL, [old_bk_color]
-    MOV BYTE PTR ES:[SI], BL  
+    MOV BYTE PTR ES:[SI], BL
+skip_restore_0:
 
+    ; +320
+    MOV AX, SI
+    ADD AX, 320
+    MOV pixel_offset, AX
+    CALL FAR PTR check_pixel_filled
+    CMP AL, 1
+    JE skip_restore_1
     MOV BL, [old_bk_color + 1]
-    MOV BYTE PTR ES:[SI+1], BL  
+    MOV BYTE PTR ES:[SI+320], BL
+skip_restore_1:
 
+    ; +319
+    MOV AX, SI
+    ADD AX, 319
+    MOV pixel_offset, AX
+    CALL FAR PTR check_pixel_filled
+    CMP AL, 1
+    JE skip_restore_2
     MOV BL, [old_bk_color + 2]
-    MOV BYTE PTR ES:[SI-1], BL  
-
-    MOV BL, [old_bk_color + 3]
-    MOV BYTE PTR ES:[SI+320], BL  
-
-    MOV BL, [old_bk_color + 4]
     MOV BYTE PTR ES:[SI+319], BL
+skip_restore_2:
 
-    MOV BL, [old_bk_color + 5]
+    ; +318
+    MOV AX, SI
+    ADD AX, 318
+    MOV pixel_offset, AX
+    CALL FAR PTR check_pixel_filled
+    CMP AL, 1
+    JE skip_restore_3
+    MOV BL, [old_bk_color + 3]
     MOV BYTE PTR ES:[SI+318], BL
+skip_restore_3:
 
-    MOV BL, [old_bk_color + 6]
+    ; +321
+    MOV AX, SI
+    ADD AX, 321
+    MOV pixel_offset, AX
+    CALL FAR PTR check_pixel_filled
+    CMP AL, 1
+    JE skip_restore_4
+    MOV BL, [old_bk_color + 4]
     MOV BYTE PTR ES:[SI+321], BL
+skip_restore_4:
 
-    MOV BL, [old_bk_color + 7]
+    ; +322
+    MOV AX, SI
+    ADD AX, 322
+    MOV pixel_offset, AX
+    CALL FAR PTR check_pixel_filled
+    CMP AL, 1
+    JE skip_restore_5
+    MOV BL, [old_bk_color + 5]
     MOV BYTE PTR ES:[SI+322], BL
+skip_restore_5:
 
-    MOV BL, [old_bk_color + 8]
-    MOV BYTE PTR ES:[SI-320], BL  
+    ; -320
+    MOV AX, SI
+    SUB AX, 320
+    MOV pixel_offset, AX
+    CALL FAR PTR check_pixel_filled
+    CMP AL, 1
+    JE skip_restore_6
+    MOV BL, [old_bk_color + 6]
+    MOV BYTE PTR ES:[SI-320], BL
+skip_restore_6:
 
-    continue2:
-    ; Update new position
+continue2:
+    ; Update to new position
     MOV AX, [mouseY]
     MOV BX, 320
-    MUL BX            
-    ADD AX, [mouseX]  
-    MOV DI, AX        
+    MUL BX
+    ADD AX, [mouseX]
+    MOV DI, AX
 
-    ; Store new background colors before drawing new cursor
+    ; Save background
     MOV SI, DI
-    MOV AL, BYTE PTR ES:[SI]  
-    MOV [old_bk_color], AL  
+    MOV AL, BYTE PTR ES:[SI]
+    MOV [old_bk_color], AL
 
-    MOV AL, BYTE PTR ES:[SI+1]  
-    MOV [old_bk_color + 1], AL  
+    MOV AL, BYTE PTR ES:[SI+320]
+    MOV [old_bk_color + 1], AL
 
-    MOV AL, BYTE PTR ES:[SI-1]  
-    MOV [old_bk_color + 2], AL  
+    MOV AL, BYTE PTR ES:[SI+319]
+    MOV [old_bk_color + 2], AL
 
-    MOV AL, BYTE PTR ES:[SI+320]  
+    MOV AL, BYTE PTR ES:[SI+318]
     MOV [old_bk_color + 3], AL
 
-    MOV AL, BYTE PTR ES:[SI+319]  
+    MOV AL, BYTE PTR ES:[SI+321]
     MOV [old_bk_color + 4], AL
 
-    MOV AL, BYTE PTR ES:[SI+318]  
-    MOV [old_bk_color + 5], AL  
+    MOV AL, BYTE PTR ES:[SI+322]
+    MOV [old_bk_color + 5], AL
 
-    MOV AL, BYTE PTR ES:[SI+321]  
+    MOV AL, BYTE PTR ES:[SI-320]
     MOV [old_bk_color + 6], AL
 
-    MOV AL, BYTE PTR ES:[SI+322]  
-    MOV [old_bk_color + 7], AL
-
-    MOV AL, BYTE PTR ES:[SI-320]  
-    MOV [old_bk_color + 8], AL  
-
-    ; Draw new cursor
-    mov AL,[Color]
-    MOV BYTE PTR ES:[DI], AL   ; Center
-    MOV BYTE PTR ES:[DI+1], AL ; Right
-    MOV BYTE PTR ES:[DI-1], AL ; Left
-    MOV BYTE PTR ES:[DI+320], AL ; Below
+    ; Draw cursor again
+    MOV AL, [Color]
+    MOV BYTE PTR ES:[DI], AL
+    MOV BYTE PTR ES:[DI+320], AL
     MOV BYTE PTR ES:[DI+319], AL
     MOV BYTE PTR ES:[DI+318], AL
     MOV BYTE PTR ES:[DI+321], AL
     MOV BYTE PTR ES:[DI+322], AL
-    MOV BYTE PTR ES:[DI-320], AL ; Above 
+    MOV BYTE PTR ES:[DI-320], AL
 
     MOV [old_mouseDI], DI
     RET
@@ -320,53 +356,90 @@ NO_KEY:
 GET_KEY_PRESS ENDP
 
 COLOR_FILL PROC FAR
+    ; Set starting pointer for filled_pixel array
+    mov bp, 0           ; Offset index into filled_pixel array
 
     ; === Calculate aligned X ===
-    mov ax, [mouseX]    ; Load mouseX
+    mov ax, [mouseX]
     xor dx, dx
-    mov cl, 5           ; Divide by 5
-    div cl              ; AX / 5 → AL = quotient, AH = remainder
+    mov cl, 5
+    div cl
     mov ah, 0
     mov cl, 5
-    mul cl              ; Multiply quotient by 5
-    mov dx, ax          ; dx = adjusted x (multiple of 5)
+    mul cl
+    mov dx, ax          ; dx = adjusted x
 
-    mov [lcount],dx
+    mov [lcount], dx
 
     ; === Calculate aligned Y ===
     mov ax, [mouseY]
     xor dx, dx
     mov cl, 5
-    div cl              ; AL = quotient
+    div cl
     mov ah, 0
     mov cl, 5
-    mul cl              ; AX = y aligned to nearest lower multiple of 5
+    mul cl
     dec ax
-    mov si, ax          ; si = current y
+    mov si, ax
     mov bx, ax
-    add bx, 5           ; bx = si + 5 (upper limit for loop)
+    add bx, 5
 
 v_fill:
-    ; Calculate offset: offset = y * 320 + x
     mov ax, si
     mov cx, 320
-    mul cx              ; AX = si * 320
-    mov dx,[lcount]
-    add ax, dx          ; Add x
-    mov di, ax
+    mul cx
+    mov dx, [lcount]
+    add ax, dx
+    mov di, ax          ; di = offset
 
-    mov cx, 5           ; fill 5 horizontal pixels
+    mov cx, 5
 h_fill:
     mov al, [Color]
     mov byte ptr es:[di], al
+
+    ; Store current DI into filled_pixel array
+    mov [filled_pixel + bp], di
+    add bp, 2           ; Move to next slot
+
     inc di
     loop h_fill
 
     inc si
     cmp si, bx
-    jl v_fill           ; Loop while si < bx
+    jl v_fill
 
     ret
 COLOR_FILL ENDP
+
+; === Check if [SI+offset] is in filled_pixel array ===
+; Result: ZF = 1 → not found → restore it
+;         ZF = 0 → found → skip restoration
+
+check_pixel_filled PROC FAR
+    push ax
+    push bx
+    push cx
+    mov ax, pixel_offset     ; DI+offset
+    mov cx, 25
+    mov bx, 0
+search_loop:
+    cmp ax, [filled_pixel + bx]
+    je pixel_found
+    add bx, 2
+    loop search_loop
+    ; Not found
+    pop cx
+    pop bx
+    pop ax
+    mov al, 0                ; Not found → AL = 0
+    ret
+
+pixel_found:
+    pop cx
+    pop bx
+    pop ax
+    mov al, 1                ; Found → AL = 1
+    ret
+check_pixel_filled ENDP
 
 end
