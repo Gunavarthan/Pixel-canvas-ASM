@@ -307,8 +307,16 @@ CHECK_SPACE:
 
 CHECK_BACKSPACE:
     CMP AL,08h
-    JNE NO_KEY
+    JNE CHECK_P
     call PRINT_MATRIX
+
+CHECK_P:
+    CMP AL,'p'
+    JNE NO_KEY
+    call FAR PTR GET_DI        ; Compute DI from mouseX, mouseY
+    mov bl, BYTE PTR ES:[di]   ; Read color byte at calculated offset
+    mov [Color], bl
+
 
 NO_KEY:
     RET
@@ -368,5 +376,43 @@ h_fill:
 
     ret
 COLOR_FILL ENDP
+
+;RETURN DI FROM X,Y
+GET_DI PROC FAR
+    push ax
+    push bx
+    push cx
+    push dx
+
+    ; Align mouseX to grid
+    mov ax, [mouseX]
+    xor dx, dx
+    mov cl, 5
+    div cl
+    xor ah, ah
+    mul cl
+    mov bx, ax         ; BX = aligned mouseX
+
+    ; Align mouseY to grid
+    mov ax, [mouseY]
+    xor dx, dx
+    mov cl, 5
+    div cl
+    xor ah, ah
+    mul cl             ; AX = aligned mouseY
+
+    ; Calculate offset: (Y * 320) + X
+    mov cx, 320
+    mul cx
+    add ax, bx         ; AX = (aligned Y * 320) + aligned X
+    mov di, ax         ; Store result in DI
+
+    pop dx
+    pop cx
+    pop bx
+    pop ax
+    ret
+GET_DI ENDP
+
 
 end
