@@ -18,7 +18,7 @@
     filled_pixel dw 25 dup(?)
     pixel_offset dw ?
     old_bk_color db 9 dup(?)
-    grid_res db 5
+    grid_res db 10
 
     i db 0
     ;Grid_arr [1024]  
@@ -89,7 +89,7 @@ PRINT_MATRIX PROC
             mov al, [cb]
             mov es:[di], al
             
-            cmp [X_10], 5              ; change the grid size 
+            cmp [X_10],5              ; change the grid size 
             JNE continue
             mov [X_10], 0
             CALL FAR PTR swapColor
