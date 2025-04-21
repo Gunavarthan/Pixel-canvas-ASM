@@ -256,7 +256,9 @@ DRAW_MOUSE ENDP
 GET_KEY_PRESS PROC
     MOV AH, 01h      ;check key press
     INT 16h
-    JZ NO_KEY        ; no key, return
+    JNZ CONTINUE2      ; if not zero, continue (no match)
+    JMP NO_KEY        ; if zero (Z flag set), go to NO_KEY
+CONTINUE2:
 
     MOV AH, 00h      ; Get  key
     INT 16h
@@ -312,10 +314,31 @@ CHECK_BACKSPACE:
 
 CHECK_P:
     CMP AL,'p'
-    JNE NO_KEY
+    JNE CHECK_EXIT
     call FAR PTR GET_DI        ; Compute DI from mouseX, mouseY
     mov bl, BYTE PTR ES:[di]   ; Read color byte at calculated offset
     mov [Color], bl
+
+CHECK_EXIT:
+    CMP AL, 1Bh       ; Check for ESC key
+    JNE NO_KEY
+
+    ; --- Clear screen with black background ---
+    mov ax, 0600h     ; Scroll up entire window
+    mov bh, 00h       ; Black background, black text
+    mov cx, 0000h     ; Upper-left corner (row 0, col 0)
+    mov dx, 184Fh     ; Lower-right corner (row 24, col 79)
+    int 10h
+
+    ; --- Set cursor position to top-left ---
+    mov ah, 02h
+    mov bh, 0
+    mov dx, 0000h
+    int 10h
+
+    ; --- Exit to DOS ---
+    mov ax, 4C00h
+    int 21h
 
 
 NO_KEY:
