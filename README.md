@@ -15,7 +15,8 @@ This project is a pixel art editing program developed using Assembly Language (A
 - **Editor Interface:**
   - will be soon uploaded
 - **Sample Artwork:**
-  - will be soon uploaded
+  - [Vice City]([https://gunavarthan.github.io/Portfolio-Terminal/](https://github.com/user-attachments/assets/1ff79ad5-4059-449c-8ecc-4aad3fb96beb))
+  - [Heart](https://github.com/user-attachments/assets/e7505678-0bf0-4dab-b203-b9d22c2f4720)
 
 ## Requirements
 - 8086 Microprocessor Environment
